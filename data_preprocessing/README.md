@@ -118,7 +118,9 @@ Spatial preprocessing focuses on cropping faces from video frames.
     -d [dataset]: Specify the dataset to preprocess. Options are DFDC, FF, CDF, DFD.                
     -n [nframes]: Specify the number of frames to sample uniformly from each video.
 
-2. Crop Faces for FaceForensics++ Training
+2. Crop Faces, mask and detect landmark for FaceForensics++ to Training         
+- Download landmark detector (shape_predictor_81_face_landmarks.dat) from [here](https://github.com/codeniko/shape_predictor_81_face_landmarks) and place it in `data_preprocessing` folder.  
+- Crop Faces, mask and detect landmark
     ```bash
     python crop_retina_dlib.py -d Deepfakes -c c23
     python crop_retina_dlib.py -d NeuralTextures -c c23
