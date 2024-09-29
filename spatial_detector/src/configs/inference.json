@@ -1,0 +1,13 @@
+
+{
+    "epoch":100,
+    "batch_size":{"train":2, "val":1, "test":128},
+    "image_size":380,
+    "frame_num": {"train":16, "val":1, "test":1},
+    "dataset": {"train":"FaceForensics++", "val":["Celeb-DF-v2", "DFDC"], "test":["Celeb-DF-v2", "DFDC"]},
+    "compression": "c23",
+    "checkpoint": "/mnt/sdb/maisie/SelfBlendedImages/output/SBI_base_09_02_13_37_12/weights/63_0.7780_val.tar",
+    "wo sup":"/mnt/sdb/maisie/SelfBlendedImages/output/SBI_base_07_16_15_59_49/weights/32_0.7279_val.tar",
+    "sup":"/mnt/sdb/maisie/SelfBlendedImages/output/only_train_without45_base_08_05_01_40_56/weights/22_0.7602_val.tar",
+    "robustness": "/mnt/sdb/maisie/SelfBlendedImages/output/robustness_base_08_15_17_48_26/weights/172_0.9855_val.tar"
+}

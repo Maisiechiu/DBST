@@ -90,8 +90,6 @@ your space
 [FaceForensics++ and DeepFakeDetection](https://github.com/ondyari/FaceForensics)  
 [Celeb-DF-v2](https://github.com/yuezunli/celeb-deepfakeforensics)  
 [DFDC and DFDCP](https://dfdc.ai/login)  
-[FFIW](https://github.com/tfzhou/FFIW)  
-[DeeperForensics](https://github.com/EndlessSora/DeeperForensics-1.0)
 
 
 

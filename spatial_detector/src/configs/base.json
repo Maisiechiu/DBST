@@ -1,0 +1,10 @@
+
+{
+    "epoch":100,
+    "batch_size":{"train":12, "val":1, "test":16},
+    "image_size":380,
+    "frame_num": {"train":8, "val":1, "test":4},
+    "dataset": {"train":"FaceForensics++", "val":["Celeb-DF-v2", "DFDC"], "test":["Celeb-DF", "DFDC"]},
+    "compression": "c23",
+    "checkpoint": "None"
+}
