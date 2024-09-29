@@ -129,13 +129,13 @@ def process(video, num_frames=32, context_range=8, face_detection_model=None):
 
             # every video rawframes2 dir, ex: 'original_sequences/youtube/raw/rawframes2/000'
             frame_dir = video.replace("videos",
-                                      "rawframes2_test_2").replace(".mp4", "")
+                                      "rawframes2_test").replace(".mp4", "")
             # save this video's anchor frmaes' bbox(for whole image)
             bbox_dir = video.replace("videos",
-                                     "rawframes2_test_2_retina").replace(
+                                     "rawframes2_test_retina").replace(
                                          ".mp4", "")
-            img_tall_dir = frame_dir.replace("rawframes2_test_2",
-                                             "rawframes2_test_2_tall")
+            img_tall_dir = frame_dir.replace("rawframes2_test",
+                                             "rawframes2_test_tall")
             os.makedirs(frame_dir, exist_ok=True)
             os.makedirs(bbox_dir, exist_ok=True)
             os.makedirs(img_tall_dir, exist_ok=True)
