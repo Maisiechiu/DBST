@@ -33,7 +33,7 @@ class PackActionInputs(BaseTransform):
             self,
             collect_keys: Optional[Tuple[str]] = None,
             meta_keys: Sequence[str] = ('img_shape', 'img_key', 'video_id',
-                                        'timestamp'),
+                                        'timestamp', 'frame_dir'),
             algorithm_keys: Sequence[str] = (),
     ) -> None:
         self.collect_keys = collect_keys
@@ -425,8 +425,8 @@ class FormatGCNInput(BaseTransform):
         cur_num_person = keypoint.shape[0]
         if cur_num_person < self.num_person:
             pad_dim = self.num_person - cur_num_person
-            pad = np.zeros(
-                (pad_dim, ) + keypoint.shape[1:], dtype=keypoint.dtype)
+            pad = np.zeros((pad_dim, ) + keypoint.shape[1:],
+                           dtype=keypoint.dtype)
             keypoint = np.concatenate((keypoint, pad), axis=0)
             if self.mode == 'loop' and cur_num_person == 1:
                 for i in range(1, self.num_person):

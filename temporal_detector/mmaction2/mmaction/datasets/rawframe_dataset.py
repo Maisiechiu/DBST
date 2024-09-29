@@ -87,7 +87,7 @@ class RawframeDataset(BaseActionDataset):
                  pipeline: List[Union[ConfigType, Callable]],
                  data_prefix: ConfigType = dict(img=''),
                  filename_tmpl: str = 'img_{:05}.jpg',
-                 with_offset: bool = False,
+                 with_offset: bool = True,
                  multi_class: bool = False,
                  num_classes: Optional[int] = None,
                  start_index: int = 1,
@@ -96,16 +96,15 @@ class RawframeDataset(BaseActionDataset):
                  **kwargs) -> None:
         self.filename_tmpl = filename_tmpl
         self.with_offset = with_offset
-        super().__init__(
-            ann_file,
-            pipeline=pipeline,
-            data_prefix=data_prefix,
-            test_mode=test_mode,
-            multi_class=multi_class,
-            num_classes=num_classes,
-            start_index=start_index,
-            modality=modality,
-            **kwargs)
+        super().__init__(ann_file,
+                         pipeline=pipeline,
+                         data_prefix=data_prefix,
+                         test_mode=test_mode,
+                         multi_class=multi_class,
+                         num_classes=num_classes,
+                         start_index=start_index,
+                         modality=modality,
+                         **kwargs)
 
     def load_data_list(self) -> List[dict]:
         """Load annotation file to get video information."""

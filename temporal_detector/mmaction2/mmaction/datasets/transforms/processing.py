@@ -208,8 +208,8 @@ class RandomCrop(BaseTransform):
             old_y_ratio + y_ratio * old_h_ratio, w_ratio * old_w_ratio,
             h_ratio * old_h_ratio
         ]
-        results['crop_quadruple'] = np.array(
-            new_crop_quadruple, dtype=np.float32)
+        results['crop_quadruple'] = np.array(new_crop_quadruple,
+                                             dtype=np.float32)
 
         new_h, new_w = self.size, self.size
 
@@ -315,8 +315,9 @@ class RandomResizedCrop(RandomCrop):
 
         min_ar, max_ar = aspect_ratio_range
         aspect_ratios = np.exp(
-            np.random.uniform(
-                np.log(min_ar), np.log(max_ar), size=max_attempts))
+            np.random.uniform(np.log(min_ar),
+                              np.log(max_ar),
+                              size=max_attempts))
         target_areas = np.random.uniform(*area_range, size=max_attempts) * area
         candidate_crop_w = np.round(np.sqrt(target_areas *
                                             aspect_ratios)).astype(np.int32)
@@ -371,8 +372,8 @@ class RandomResizedCrop(RandomCrop):
             old_y_ratio + y_ratio * old_h_ratio, w_ratio * old_w_ratio,
             h_ratio * old_h_ratio
         ]
-        results['crop_quadruple'] = np.array(
-            new_crop_quadruple, dtype=np.float32)
+        results['crop_quadruple'] = np.array(new_crop_quadruple,
+                                             dtype=np.float32)
 
         crop_bbox = np.array([left, top, right, bottom])
         results['crop_bbox'] = crop_bbox
@@ -466,7 +467,7 @@ class MultiScaleCrop(RandomCrop):
             raise ValueError(f'Num_fix_crops must be in {[5, 13]}, '
                              f'but got {num_fixed_crops}')
 
-        self.scales = scales
+        self.scales = [random.uniform(0.75, 1.0) for _ in range(3)]
         self.max_wh_scale_gap = max_wh_scale_gap
         self.random_crop = random_crop
         self.num_fixed_crops = num_fixed_crops
@@ -486,6 +487,7 @@ class MultiScaleCrop(RandomCrop):
 
         img_h, img_w = results['img_shape']
         base_size = min(img_h, img_w)
+        self.scales = [random.uniform(0.8, 1.0) for _ in range(3)]
         crop_sizes = [int(base_size * s) for s in self.scales]
 
         candidate_sizes = []
@@ -552,8 +554,8 @@ class MultiScaleCrop(RandomCrop):
             old_y_ratio + y_ratio * old_h_ratio, w_ratio * old_w_ratio,
             h_ratio * old_h_ratio
         ]
-        results['crop_quadruple'] = np.array(
-            new_crop_quadruple, dtype=np.float32)
+        results['crop_quadruple'] = np.array(new_crop_quadruple,
+                                             dtype=np.float32)
 
         if not self.lazy:
             if 'keypoint' in results:
@@ -644,9 +646,8 @@ class Resize(BaseTransform):
     def _resize_imgs(self, imgs, new_w, new_h):
         """Static method for resizing keypoint."""
         return [
-            mmcv.imresize(
-                img, (new_w, new_h), interpolation=self.interpolation)
-            for img in imgs
+            mmcv.imresize(img, (new_w, new_h),
+                          interpolation=self.interpolation) for img in imgs
         ]
 
     @staticmethod
@@ -999,11 +1000,11 @@ class ColorJitter(BaseTransform):
 
         new_imgs = []
         for i in range(num_clips):
-            b = np.random.uniform(
-                low=self.brightness[0], high=self.brightness[1])
+            b = np.random.uniform(low=self.brightness[0],
+                                  high=self.brightness[1])
             c = np.random.uniform(low=self.contrast[0], high=self.contrast[1])
-            s = np.random.uniform(
-                low=self.saturation[0], high=self.saturation[1])
+            s = np.random.uniform(low=self.saturation[0],
+                                  high=self.saturation[1])
             h = np.random.uniform(low=self.hue[0], high=self.hue[1])
             start, end = i * clip_len, (i + 1) * clip_len
 
@@ -1094,8 +1095,8 @@ class CenterCrop(RandomCrop):
             old_y_ratio + y_ratio * old_h_ratio, w_ratio * old_w_ratio,
             h_ratio * old_h_ratio
         ]
-        results['crop_quadruple'] = np.array(
-            new_crop_quadruple, dtype=np.float32)
+        results['crop_quadruple'] = np.array(new_crop_quadruple,
+                                             dtype=np.float32)
 
         if not self.lazy:
             if 'keypoint' in results:
@@ -1400,8 +1401,8 @@ class RandomErasing(BaseTransform):
         """Randomly generate patch the erase."""
         # convert the aspect ratio to log space to equally handle width and
         # height.
-        log_aspect_range = np.log(
-            np.array(self.aspect_range, dtype=np.float32))
+        log_aspect_range = np.log(np.array(self.aspect_range,
+                                           dtype=np.float32))
         aspect_ratio = np.exp(np.random.uniform(*log_aspect_range))
         area = img_h * img_w
         area *= np.random.uniform(self.min_area_ratio, self.max_area_ratio)
