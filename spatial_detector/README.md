@@ -20,3 +20,5 @@ CUDA_VISIBLE_DEVICES=* python3 src/inference_dataset.py \
 src/configs/sbi/inference.json \
 -n sbi
 ```
+
+The code primiary from SBI [https://github.com/open-mmlab/mmaction2.git]
