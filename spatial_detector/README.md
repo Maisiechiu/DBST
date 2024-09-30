@@ -1,8 +1,11 @@
 ## Setup
 1. Dataset: follow the instruction of data_preprocessing here [https://github.com/Maisiechiu/DBST/tree/main/data_preprocessing]
-2. Rearrange: create json file of training and inference sample.
+2. Create training and testing list : using rearrange.ipynb
 3. Create Environment
-
+```bash
+cd spatial_detector
+./install.sh
+```
 ## Training
 Run the training:
 ```bash
