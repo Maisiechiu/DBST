@@ -106,8 +106,8 @@ def main(args):
 
         # Now aggregate the results
         final_results = {}
-        with open(f"{'_'.join(cfg['checkpoint'].split('/')[-3:])}_{dataset_name}_predict.txt", 'w') as f:
-                
+        with open(f"{'_'.join(cfg['checkpoint'].split('/')[-3:])}_{dataset_name}_spatial.txt", 'w') as f:
+  
             for video, frames in video_results.items():
                 frame_averages = []
                 for frame, probs in frames.items():
