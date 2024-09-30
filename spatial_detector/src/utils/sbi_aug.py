@@ -35,6 +35,11 @@ else:
 
 class SBI_Dataset(Dataset):
 
+    def write_frame_info(self, frame_info):
+        with open('frame_info.txt', 'a') as file:
+            for frame_info in self.frame_info_list:
+                file.write(frame_info + '\n')
+
     def __init__(self,
                  dataset_name,
                  phase='train',
@@ -43,10 +48,10 @@ class SBI_Dataset(Dataset):
                  config=None):
 
         assert phase in ['train', 'val', 'test']
-        self.rawframes2_list, self.landmark_list = init_aug(
+        self.rawframes2_list, self.landmark_list, self.retina_list = init_aug_rawframe2(
             root_folder=
-            "/home/jovyan/dataset/FaceForensics++/original_sequences/youtube/raw/rawframes2_norm1",
-            target_count=33)
+            "/home/jovyan/dataset/FaceForensics++/original_sequences/youtube/c23/rawframes_aug"
+        )
 
         self.image_size = (image_size, image_size)
 
@@ -55,6 +60,7 @@ class SBI_Dataset(Dataset):
 
         self.transforms = self.get_transforms()
         self.source_transforms = self.get_source_transforms()
+        self.frame_info_list = []
 
     def __len__(self):
         if self.phase == "train":
@@ -66,24 +72,47 @@ class SBI_Dataset(Dataset):
         try:
             image_paths = self.rawframes2_list[idx]
             landmark_paths = self.landmark_list[idx]
+            retina_paths = self.retina_list[idx]
+
             frame_save_dir = os.path.dirname(image_paths[0]).replace(
-                'original_sequences', 'manipulated_sequences')
+                'original_sequences', 'manipulated_sequences').replace(
+                    'rawframes_aug', 'rawframes2_random_margin_5frame')
             mask_save_dir = os.path.dirname(image_paths[0]).replace(
                 'original_sequences',
-                'manipulated_sequences').replace('/raw/', '/masks/')
+                'manipulated_sequences').replace('/c23/', '/masks/').replace(
+                    'rawframes_aug', 'rawframes2_random_margin_5frame')
+            # retina_save_dir = os.path.dirname(image_paths[0]).replace(
+            #     'original_sequences',
+            #     'manipulated_sequences').replace('/rawframes_aug/', '/retina/')
             os.makedirs(frame_save_dir, exist_ok=True)
             os.makedirs(mask_save_dir, exist_ok=True)
+
+            # os.makedirs(retina_save_dir, exist_ok=True)
 
             source_dict = {}
             image_dict = {}
             landmarks_list = []
-
-            h_flip = True if np.random.rand() < 0.5 else False
-
+            bbox_list = []
+            num_frames_to_blend = (idx % 28) + 5
+            hull_type = idx % 5
+            # hull_type = 5
+            if hull_type == 4:
+                mask_region = random.randint(0, 6)
+            else:
+                mask_region = None
+            center_bbox = np.load(retina_paths[15])
+            center_landmark = np.load(landmark_paths[15])
+            img = cv2.cvtColor(cv2.imread(image_paths[15]), cv2.COLOR_BGR2RGB)
+            _, _, center_bbox, __, y0_new, y1_new, x0_new, x1_new = crop_face(
+                img,
+                center_landmark,
+                center_bbox,
+                margin=True,
+                crop_by_bbox=False,
+                abs_coord=True)
             for idx, frame in enumerate(image_paths):
                 frame = cv2.cvtColor(cv2.imread(frame), cv2.COLOR_BGR2RGB)
-                if h_flip:
-                    frame, _, _, _ = self.hflip(frame, None, None, None)
+                frame = frame[y0_new:y1_new, x0_new:x1_new]
                 if idx == 0:
                     source_dict[f'image'] = frame
                 else:
@@ -94,17 +123,15 @@ class SBI_Dataset(Dataset):
             for landmark_path in landmark_paths:
                 landmark = np.load(landmark_path)
                 landmark = self.reorder_landmark(landmark)
-                if h_flip:
-                    _, _, landmark, _ = self.hflip(frame, None, landmark, None)
-                landmarks_list.append(landmark)
+                landmark_cropped = np.zeros_like(landmark)
+                for i, (p, q) in enumerate(landmark):
+                    landmark_cropped[i] = [p - x0_new, q - y0_new]
 
-            masks = []
+                landmarks_list.append(landmark_cropped)
 
-            manipulated_frames = {}
-
-            num_frames_to_blend = random.randint(17, 33)
             frames_to_blend = random.sample(range(len(source_dict)),
                                             num_frames_to_blend)
+
             if random.random() < 0.5:
                 transformed = self.source_transforms(**source_dict)
                 source_list = []
@@ -123,43 +150,43 @@ class SBI_Dataset(Dataset):
                                                  sorted(transformed.items())):
                     source_list.append(src)
                     image_list.append(img)
-            hull_type = random.choice([0, 1, 2, 3])
+            _, _, _, __, y0_crop, y1_crop, x0_crop, x1_crop = self.crop_face(
+                img=img,
+                landmark=None,
+                bbox=center_bbox,
+                abs_coord=True,
+                only_img=False)
             for idx, (src, img, landmark) in enumerate(
                     zip(source_list, image_list, landmarks_list)):
-                if idx in frames_to_blend:
-                    img, img_blended, mask = self.self_blending(
-                        src, img, landmark, hull_type=hull_type)
-                    mask = mask * 255
-                else:
+
+                img, img_blended, mask = self.self_blending(
+                    src,
+                    img,
+                    landmark,
+                    hull_type=hull_type,
+                    mask_region=mask_region,
+                )
+                mask = mask * 255
+                if idx not in frames_to_blend:
                     img_blended = img
                     mask = np.zeros_like(img, dtype=np.uint8)
-                # masks.append(mask)
+
+                img_blended = img_blended[y0_crop:y1_crop, x0_crop:x1_crop]
+                mask = mask[y0_crop:y1_crop, x0_crop:x1_crop]
+                mask = cv2.resize(mask, (224, 224))
+                img_blended = cv2.resize(img_blended, (224, 224))
                 cv2.imwrite(
-                    os.path.join(frame_save_dir,
-                                 f'image_{str(idx+1).zfill(5)}.png'),
+                    os.path.join(frame_save_dir, f'{str(idx).zfill(3)}.png'),
                     cv2.cvtColor(img_blended, cv2.COLOR_BGR2RGB))
                 cv2.imwrite(
-                    os.path.join(mask_save_dir,
-                                 f'image_{str(idx+1).zfill(5)}.png'), mask)
-                # if idx == 0:
-                #     manipulated_frames[f'image'] = img_blended
-                # else:
-                #     manipulated_frames[
-                #         f'image{str(idx).zfill(2)}'] = img_blended
-
-            # transformed = self.transforms(**manipulated_frames)
-            # manipulated_frames = [
-            #     value for key, value in sorted(transformed.items())
-            # ]
-            # for i, (frame, mask) in enumerate(zip(manipulated_frames, masks)):
-            #     cv2.imwrite(
-            #         os.path.join(frame_save_dir,
-            #                      f'image_{str(i+1).zfill(5)}.png'),
-            #         cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-            #     cv2.imwrite(
-            #         os.path.join(mask_save_dir,
-            #                      f'image_{str(i+1).zfill(5)}.png'), mask)
-
+                    os.path.join(mask_save_dir, f'{str(idx).zfill(3)}.png'),
+                    mask)
+                # np.save(
+                #     os.path.join(retina_save_dir, f'{str(idx).zfill(3)}.npy'),
+                #     bbox)
+            frame_info = f"Image Directory: {frame_save_dir}, Frames to Blend: {frames_to_blend}, Hull Type: {hull_type}, Mask Region: {mask_region}"
+            with open('frame_info.txt', 'a') as file:
+                file.write(frame_info + '\n')
             return None
         except Exception as e:
             print(e)
@@ -217,7 +244,6 @@ class SBI_Dataset(Dataset):
                 "image29": "image",
                 "image30": "image",
                 "image31": "image",
-                "image32": "image",
             },
             p=1.)
 
@@ -267,33 +293,28 @@ class SBI_Dataset(Dataset):
                 "image29": "image",
                 "image30": "image",
                 "image31": "image",
-                "image32": "image",
             },
             p=1.)
 
-    def randaffine(self, img, mask):
+    def randaffine(self, img, mask, bbox=None, mask_region=None):
         f = alb.Affine(translate_percent={
             'x': (-0.03, 0.03),
             'y': (-0.015, 0.015)
-        },
-                       scale=[0.95, 1 / 0.95],
-                       fit_output=False,
-                       p=1)
-
+        },scale=[0.95, 1 / 0.95],fit_output=False,p=1)
         g = alb.ElasticTransform(
             alpha=50,
             sigma=7,
-            alpha_affine=0,
+            # alpha_affine=0,
             p=1,
         )
 
         transformed = f(image=img, mask=mask)
         img = transformed['image']
-
         mask = transformed['mask']
+
         transformed = g(image=img, mask=mask)
         mask = transformed['mask']
-        return img, mask
+        return img, mask, bbox
 
     # def self_blending(self, img, landmark):
     #     H, W = len(img), len(img[0])
@@ -322,13 +343,22 @@ class SBI_Dataset(Dataset):
 
     #     return img, img_blended, mask
 
-    def self_blending(self, source, img, landmark, hull_type=None):
+    def self_blending(self,
+                      source,
+                      img,
+                      landmark,
+                      hull_type=None,
+                      mask_region=None,
+                      bbox=None):
         H, W = len(img), len(img[0])
         if np.random.rand() < 0.25:
             landmark = landmark[:68]
         if exist_bi:
             logging.disable(logging.FATAL)
-            mask = random_get_hull(landmark, img, hull_type=hull_type)[:, :, 0]
+            mask = random_get_hull(landmark,
+                                   img,
+                                   hull_type=hull_type,
+                                   mask_region=mask_region)[:, :, 0]
             logging.disable(logging.NOTSET)
         else:
             mask = np.zeros_like(img[:, :, 0])
@@ -341,9 +371,15 @@ class SBI_Dataset(Dataset):
         # else:
         #     img = self.source_transforms(image=img.astype(np.uint8))['image']
 
-        source, mask = self.randaffine(source, mask)
+        source, mask, _ = self.randaffine(source,
+                                          mask,
+                                          bbox=None,
+                                          mask_region=None)
 
-        img_blended, mask = B.dynamic_blend(source, img, mask)
+        img_blended, mask = B.dynamic_blend(source,
+                                            img,
+                                            mask,
+                                            hull_type=hull_type)
         img_blended = img_blended.astype(np.uint8)
         img = img.astype(np.uint8)
 
@@ -357,75 +393,81 @@ class SBI_Dataset(Dataset):
         landmark[68:] = landmark_add
         return landmark
 
-    def hflip(self, img, mask=None, landmark=None, bbox=None):
-        H, W = img.shape[:2]
-
-        if landmark is not None:
-            landmark = landmark.copy()
-            landmark_new = np.zeros_like(landmark)
-
-            landmark_new[:17] = landmark[:17][::-1]
-            landmark_new[17:27] = landmark[17:27][::-1]
-
-            landmark_new[27:31] = landmark[27:31]
-            landmark_new[31:36] = landmark[31:36][::-1]
-
-            landmark_new[36:40] = landmark[42:46][::-1]
-            landmark_new[40:42] = landmark[46:48][::-1]
-
-            landmark_new[42:46] = landmark[36:40][::-1]
-            landmark_new[46:48] = landmark[40:42][::-1]
-
-            landmark_new[48:55] = landmark[48:55][::-1]
-            landmark_new[55:60] = landmark[55:60][::-1]
-
-            landmark_new[60:65] = landmark[60:65][::-1]
-            landmark_new[65:68] = landmark[65:68][::-1]
-            if len(landmark) == 68:
-                pass
-            elif len(landmark) == 81:
-                landmark_new[68:81] = landmark[68:81][::-1]
-            else:
-                raise NotImplementedError
-            landmark_new[:, 0] = W - landmark_new[:, 0]
-
-        else:
-            landmark_new = None
-
-        if bbox is not None:
-            bbox = bbox.copy()
-            bbox_new = np.zeros_like(bbox)
-            bbox_new[0, 0] = bbox[1, 0]
-            bbox_new[1, 0] = bbox[0, 0]
-            bbox_new[:, 0] = W - bbox_new[:, 0]
-            bbox_new[:, 1] = bbox[:, 1].copy()
-            if len(bbox) > 2:
-                bbox_new[2, 0] = W - bbox[3, 0]
-                bbox_new[2, 1] = bbox[3, 1]
-                bbox_new[3, 0] = W - bbox[2, 0]
-                bbox_new[3, 1] = bbox[2, 1]
-                bbox_new[4, 0] = W - bbox[4, 0]
-                bbox_new[4, 1] = bbox[4, 1]
-                bbox_new[5, 0] = W - bbox[6, 0]
-                bbox_new[5, 1] = bbox[6, 1]
-                bbox_new[6, 0] = W - bbox[5, 0]
-                bbox_new[6, 1] = bbox[5, 1]
-        else:
-            bbox_new = None
-
-        if mask is not None:
-            mask = mask[:, ::-1]
-        else:
-            mask = None
-        img = img[:, ::-1].copy()
-        return img, mask, landmark_new, bbox_new
-
     def collate_fn(self, batch):
 
         return None
 
     def worker_init_fn(self, worker_id):
         np.random.seed(np.random.get_state()[1][0] + worker_id)
+
+    def crop_face(
+        self,
+        img,
+        landmark=None,
+        bbox=None,
+        abs_coord=False,
+        only_img=False,
+    ):
+
+
+
+        assert landmark is not None or bbox is not None
+
+        H, W = len(img), len(img[0])
+
+        x0, y0 = bbox[0]
+        x1, y1 = bbox[1]
+        w = x1 - x0
+        h = y1 - y0
+        w0_margin = w / 4  # 0#np.random.rand()*(w/8)
+        w1_margin = w / 4
+        h0_margin = h / 4  # 0#np.random.rand()*(h/5)
+        h1_margin = h / 4
+
+        w0_margin*=(np.random.rand()*0.6+0.2)#np.random.rand()
+        w1_margin*=(np.random.rand()*0.6+0.2)#np.random.rand()
+        h0_margin*=(np.random.rand()*0.6+0.2)#np.random.rand()
+        h1_margin*=(np.random.rand()*0.6+0.2)#np.random.rand()	
+
+        y0_new = max(0, int(y0 - h0_margin))
+        y1_new = min(H, int(y1 + h1_margin) + 1)
+        x0_new = max(0, int(x0 - w0_margin))
+        x1_new = min(W, int(x1 + w1_margin) + 1)
+
+        img_cropped = img[y0_new:y1_new, x0_new:x1_new]
+        if landmark is not None:
+            landmark_cropped = np.zeros_like(landmark)
+            for i, (p, q) in enumerate(landmark):
+                landmark_cropped[i] = [p - x0_new, q - y0_new]
+        else:
+            landmark_cropped = None
+        if bbox is not None:
+            bbox_cropped = np.zeros_like(bbox)
+            for i, (p, q) in enumerate(bbox):
+                bbox_cropped[i] = [p - x0_new, q - y0_new]
+        else:
+            bbox_cropped = None
+
+        if only_img:
+            return img_cropped
+        if abs_coord:
+            return (
+                img_cropped,
+                landmark_cropped,
+                bbox_cropped,
+                (y0 - y0_new, x0 - x0_new, y1_new - y1, x1_new - x1),
+                y0_new,
+                y1_new,
+                x0_new,
+                x1_new,
+            )
+        else:
+            return (
+                img_cropped,
+                landmark_cropped,
+                bbox_cropped,
+                (y0 - y0_new, x0 - x0_new, y1_new - y1, x1_new - x1),
+            )
 
 
 if __name__ == '__main__':

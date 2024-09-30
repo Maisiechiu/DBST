@@ -95,16 +95,22 @@ your space
 
 ## Temporal Preprocessing
 
-Temporal preprocessing involves processing video data to uniform sample clips from video and detect face. Use the following scripts to preprocess different datasets.
-
+Temporal preprocessing involves processing video data to uniform sample clips from video and synthesis deepfake. Use the following scripts to preprocess different datasets.
+1. crop face & clips
 ```bash
-python temporal_preprocess_ff.py          # Preprocess the FaceForensics++ (FF++) training set
-python temporal_preprocess_ff_test.py     # Preprocess the FaceForensics++ (FF++) and Fsh test sets
-python temporal_preprocess_dfd.py         # Preprocess the DeepFake Detection (DFD) dataset
-python temporal_preprocess_dfdc.py        # Preprocess the DeepFake Detection Challenge (DFDC) dataset
-python temporal_preprocess_cdf.py         # Preprocess the Celeb-DF (CDF) dataset
+python temporal_preprocess_ff.py          # FaceForensics++ (FF++) training set
+python temporal_preprocess_ff_test.py     # FaceForensics++ (FF++) and Fsh test sets
+python temporal_preprocess_dfd.py         # DeepFake Detection (DFD) dataset
+python temporal_preprocess_dfdc.py        # DeepFake Detection Challenge (DFDC) dataset
+python temporal_preprocess_cdf.py         # Celeb-DF (CDF) dataset
+python temporal_preprocess_aug.py         # Only crop face from FF orignal dataset to do tmeporal synthesis
 ```
 
+2. synthesis deepfake
+```bash
+cd spatial_detector
+python augmentdata.py src/configs/sbi/inference.json -n sbi
+```
 
 ## Spatial Preprocessing
 Spatial preprocessing focuses on cropping faces from video frames.
